@@ -157,3 +157,68 @@ export function exportToCSV(records, incidentName = 'Rong_Doi_Typhoon_Log') {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 }
+
+/**
+ * Export operational action logs to formatted Microsoft Excel (.xlsx)
+ */
+export async function exportActionLogToExcel(logs, filenamePrefix = 'RDP_Storm_Action_Log') {
+    if (!logs || logs.length === 0) {
+        alert('No operational activities logged yet.');
+        return;
+    }
+
+    const hasXLSX = await ensureXLSXLoaded();
+    const cleanName = sanitizeFilename(filenamePrefix);
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    if (hasXLSX && window.XLSX) {
+        try {
+            const dataRows = logs.map((log, i) => ({
+                'Event #': i + 1,
+                'Timestamp': log.timestampFormatted || new Date(log.timestamp).toLocaleString(),
+                'Operating Station': log.stationName || log.stationRole || 'N/A',
+                'Category': log.category || 'OPERATION',
+                'Operational Details & Audit Description': log.details || ''
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataRows);
+
+            worksheet['!cols'] = [
+                { wch: 10 }, { wch: 22 }, { wch: 40 }, { wch: 20 }, { wch: 75 }
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'RDP Operational Action Log');
+
+            const filename = `${cleanName}_${dateStr}.xlsx`;
+            XLSX.writeFile(workbook, filename);
+            return;
+        } catch (err) {
+            console.error('XLSX Action Log export error:', err);
+        }
+    }
+
+    // Fallback CSV
+    const headers = ['Event #', 'Timestamp', 'Operating Station', 'Category', 'Details'];
+    const rows = logs.map((log, i) => [
+        i + 1,
+        `"${(log.timestampFormatted || new Date(log.timestamp).toLocaleString()).replace(/"/g, '""')}"`,
+        `"${(log.stationName || log.stationRole || '').replace(/"/g, '""')}"`,
+        `"${(log.category || '').replace(/"/g, '""')}"`,
+        `"${(log.details || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvString = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const filename = `${cleanName}_${dateStr}.csv`;
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+

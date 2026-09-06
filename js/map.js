@@ -296,19 +296,29 @@ export class MarineMap {
 
         const distToBk = calculateDistanceNM(record.lat, record.lon, this.bkCoords.lat, this.bkCoords.lon);
 
+        // Baseline: 34 knots = 50px icon size. Proportional scaling by factor (windSpeed / 34)
+        const windSpeed = Math.max(10, record.windSpeed || 34);
+        const factor = windSpeed / 34;
+        const iconSizePx = Math.max(26, Math.min(130, Math.round(50 * factor)));
+        const halfSizePx = Math.round(iconSizePx / 2);
+        const arrowSizePx = Math.round(iconSizePx * 0.46);
+        const vortexSizePx = Math.round(iconSizePx * 0.74);
+        const fontSizeRem = (0.65 * Math.max(0.75, Math.min(1.25, Math.sqrt(factor)))).toFixed(2);
+        const badgeBottomPx = -Math.round(iconSizePx * 0.12);
+
         const customIcon = L.divIcon({
             className: 'storm-waypoint-marker',
             html: `
-                <div class="storm-marker-box ${isLatest ? 'latest-waypoint' : ''}">
-                    <img class="storm-arrow-img" src="${iconPath}" alt="${dir}" onerror="this.style.display='none'" />
-                    <img class="storm-vortex-img" src="${stormIconPath}" alt="Storm" />
-                    <div class="storm-badge-info">
-                        <span class="badge-wind">${record.windSpeed} kts</span>
+                <div class="storm-marker-box ${isLatest ? 'latest-waypoint' : ''}" style="width: ${iconSizePx}px; height: ${iconSizePx}px; position: relative; display: flex; align-items: center; justify-content: center;">
+                    <img class="storm-arrow-img" src="${iconPath}" alt="${dir}" onerror="this.style.display='none'" style="width: ${arrowSizePx}px; height: ${arrowSizePx}px; position: absolute; z-index: 5;" />
+                    <img class="storm-vortex-img" src="${stormIconPath}" alt="Storm" style="width: ${vortexSizePx}px; height: ${vortexSizePx}px; position: absolute; z-index: 4;" />
+                    <div class="storm-badge-info" style="position: absolute; bottom: ${badgeBottomPx}px; background: rgba(0,0,0,0.85); border: 1px solid #f97316; border-radius: 4px; padding: 1px 4px; white-space: nowrap; z-index: 6;">
+                        <span class="badge-wind" style="color: #fb923c; font-size: ${fontSizeRem}rem; font-weight: 700; font-family: monospace;">${record.windSpeed} kts</span>
                     </div>
                 </div>
             `,
-            iconSize: [50, 50],
-            iconAnchor: [25, 25]
+            iconSize: [iconSizePx, iconSizePx],
+            iconAnchor: [halfSizePx, halfSizePx]
         });
 
         const marker = L.marker([record.lat, record.lon], { icon: customIcon });
@@ -350,11 +360,16 @@ export class MarineMap {
         // Play thunder sound effect and store reference to stop synchronously
         this.currentAudio = sfx.playThunder();
 
+        const latestWind = records[records.length - 1]?.windSpeed || 34;
+        const animFactor = Math.max(10, latestWind) / 34;
+        const animSizePx = Math.max(30, Math.min(130, Math.round(50 * animFactor)));
+        const animHalfPx = Math.round(animSizePx / 2);
+
         const animIcon = L.divIcon({
             className: 'storm-animating-vortex',
-            html: `<img id="rotating-storm-img" src="assets/images/storm.png" alt="Simulating Storm" />`,
-            iconSize: [60, 60],
-            iconAnchor: [30, 30]
+            html: `<img id="rotating-storm-img" src="assets/images/storm.png" alt="Simulating Storm" style="width: ${animSizePx}px; height: ${animSizePx}px;" />`,
+            iconSize: [animSizePx, animSizePx],
+            iconAnchor: [animHalfPx, animHalfPx]
         });
 
         let currentIdx = 0;

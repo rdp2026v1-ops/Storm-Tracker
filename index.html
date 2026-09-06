@@ -281,6 +281,9 @@
                             style="font-size: 0.75rem; padding: 4px 12px;"
                             title="Export storm audit trail log and waypoint metrics to Microsoft Excel (.xlsx)">📊
                             Export Excel (.xlsx)</button>
+                        <button id="btn-open-action-log" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 4px 12px;"
+                            title="Open comprehensive operational activity log sheet">📋 Action Log</button>
                     </div>
                 </div>
 
@@ -414,17 +417,18 @@
             </div>
             <div class="modal-body">
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-                    Zero-configuration real-time synchronization connects the <strong>Offshore Command Team in the Central Control Room (CCR)</strong> with <strong>Onshore Emergency Response Teams (DIM / IMT)</strong>. All waypoint logs and emergency checklist milestones are shared live across terminals.
+                    Zero-configuration real-time collaboration connects the <strong>Offshore Central Control Room (CCR – CRT)</strong> with <strong>Onshore Incident Management Teams (IMT)</strong> and operational support stations.
                 </p>
 
                 <div class="form-group" style="margin-bottom: 12px;">
-                    <label for="sync-user-role">Operating Station / Terminal Role</label>
+                    <label for="sync-user-role">Operating Station / Access Level</label>
                     <select id="sync-user-role" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-sm);">
-                        <option value="CCR_CRT">🕹️ Offshore Central Control Room (CCR / CRT) - Lead Input</option>
-                        <option value="OIM_FM">🎖️ Offshore Installation Manager (OIM / FM)</option>
-                        <option value="ONSHORE_IMT">🏢 Onshore Incident Management Team (DIM / IMT Vung Tau)</option>
-                        <option value="LOGISTICS_VNHS">🚁 Aviation & Marine Logistics (VNHS Standby)</option>
-                        <option value="RADIO_BRIDGE">📡 Radio Room & Standby Vessel Bridge (Observer)</option>
+                        <option value="CCR_CRT">🕹️ Offshore Central Control Room (CCR – CRT) [Input & Checklists]</option>
+                        <option value="OIM_IM">🎖️ Offshore Installation Manager (IM) [Checklists Only]</option>
+                        <option value="ONSHORE_IMT">🏢 Onshore Incident Management Team (IMT) [Checklists Only]</option>
+                        <option value="LOGISTICS_VTSB">🚁 Aviation & Marine Logistics (VTSB) [Checklists Only]</option>
+                        <option value="RADIO_TELECOMS">📡 Radio Room (Telecoms) [Checklists Only]</option>
+                        <option value="OTHERS">👁️ Others [Read Only]</option>
                     </select>
                 </div>
 
@@ -440,8 +444,62 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="btn-save-sync-config" class="btn btn-primary">Update Channel & Role</button>
+                <button id="btn-save-sync-config" class="btn btn-primary">Update Channel & Station</button>
                 <button class="btn btn-secondary" data-close="modal-sync">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operational Activity & Action Log Sheet Modal -->
+    <div id="modal-action-log" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 980px; width: 95%;">
+            <div class="modal-header">
+                <div class="modal-title">📋 Operational Activity & Action Log Sheet</div>
+                <button class="btn-close-modal" data-close="modal-action-log">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="action-log-toolbar">
+                    <div class="action-log-stats">
+                        <span id="log-count-total" class="badge-count" style="background: rgba(56, 189, 248, 0.2); color: var(--brand-cyan);">0 Total Event(s)</span>
+                        <span id="log-current-station" class="badge-count" style="background: rgba(251, 146, 60, 0.2); color: #fb923c;">Active: Offshore CCR (CRT)</span>
+                    </div>
+                    <div class="action-log-actions">
+                        <select id="action-log-filter" style="padding: 4px 8px; font-size: 0.75rem; background: rgba(0,0,0,0.3); color: var(--text-main); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                            <option value="ALL">All Stations & Events</option>
+                            <option value="CCR_CRT">Offshore CCR – CRT</option>
+                            <option value="OIM_IM">Offshore IM</option>
+                            <option value="ONSHORE_IMT">Onshore IMT</option>
+                            <option value="LOGISTICS_VTSB">VTSB Logistics</option>
+                            <option value="RADIO_TELECOMS">Radio Room</option>
+                            <option value="CHECKLIST">Checklist Milestones</option>
+                            <option value="WAYPOINT">Storm Waypoints</option>
+                        </select>
+                        <button id="btn-export-action-log" class="btn btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;">📊 Export Log (.xlsx)</button>
+                        <button id="btn-clear-action-log" class="btn btn-danger" style="font-size: 0.75rem; padding: 4px 10px;">Clear Log</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 52vh; margin-top: 12px;">
+                    <table class="data-table action-log-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 140px;">Timestamp</th>
+                                <th style="width: 190px;">Operating Station</th>
+                                <th style="width: 150px;">Event Category</th>
+                                <th>Operational Description & Audit Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="action-log-tbody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 24px;">No operational actions logged yet. Actions performed by stations will appear here in real-time.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close="modal-action-log">Close Sheet</button>
             </div>
         </div>
     </div>

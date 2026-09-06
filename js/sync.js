@@ -8,6 +8,63 @@
  * 3. Offline-First Resilience: Automatic LocalStorage caching with seamless auto-reconnect.
  */
 
+export const OPERATING_STATIONS = {
+    'CCR_CRT': {
+        id: 'CCR_CRT',
+        name: 'Offshore Central Control Room (CCR – CRT)',
+        shortName: 'Offshore CCR (CRT)',
+        icon: '🕹️',
+        badgeColor: '#fb923c', // Orange
+        canInputStormData: true,
+        canTickChecklist: true
+    },
+    'OIM_IM': {
+        id: 'OIM_IM',
+        name: 'Offshore Installation Manager (IM)',
+        shortName: 'Offshore IM',
+        icon: '🎖️',
+        badgeColor: '#38bdf8', // Sky Blue
+        canInputStormData: false,
+        canTickChecklist: true
+    },
+    'ONSHORE_IMT': {
+        id: 'ONSHORE_IMT',
+        name: 'Onshore Incident Management Team (IMT)',
+        shortName: 'Onshore IMT',
+        icon: '🏢',
+        badgeColor: '#f43f5e', // Rose
+        canInputStormData: false,
+        canTickChecklist: true
+    },
+    'LOGISTICS_VTSB': {
+        id: 'LOGISTICS_VTSB',
+        name: 'Aviation & Marine Logistics (VTSB)',
+        shortName: 'VTSB Logistics',
+        icon: '🚁',
+        badgeColor: '#10b981', // Emerald
+        canInputStormData: false,
+        canTickChecklist: true
+    },
+    'RADIO_TELECOMS': {
+        id: 'RADIO_TELECOMS',
+        name: 'Radio Room (Telecoms)',
+        shortName: 'Radio Room',
+        icon: '📡',
+        badgeColor: '#c084fc', // Purple
+        canInputStormData: false,
+        canTickChecklist: true
+    },
+    'OTHERS': {
+        id: 'OTHERS',
+        name: 'Others',
+        shortName: 'Others (Read Only)',
+        icon: '👁️',
+        badgeColor: '#94a3b8', // Slate
+        canInputStormData: false,
+        canTickChecklist: false
+    }
+};
+
 export class SyncEngine {
     constructor({ roomName = 'rong-doi-ops', onDataReceived = null }) {
         this.roomName = roomName;
@@ -25,10 +82,16 @@ export class SyncEngine {
     }
 
     loadUserRole() {
-        return localStorage.getItem('rdp_user_role') || 'CCR_CRT';
+        const saved = localStorage.getItem('rdp_user_role');
+        return (saved && OPERATING_STATIONS[saved]) ? saved : 'CCR_CRT';
+    }
+
+    getStation() {
+        return OPERATING_STATIONS[this.userRole] || OPERATING_STATIONS['CCR_CRT'];
     }
 
     saveUserRole(role) {
+        if (!OPERATING_STATIONS[role]) role = 'CCR_CRT';
         this.userRole = role;
         localStorage.setItem('rdp_user_role', role);
         this.notifyStatusChange();

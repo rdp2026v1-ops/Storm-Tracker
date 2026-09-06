@@ -15,13 +15,15 @@ import {
 
 import { MarineMap } from './map.js';
 import { ChecklistManager, CHECKLIST_DEFINITIONS, parseChecklistItem, ROLE_STYLES, sfx } from './checklist.js';
-import { SyncEngine } from './sync.js';
-import { exportToExcel, exportToCSV } from './export.js';
+import { SyncEngine, OPERATING_STATIONS } from './sync.js';
+import { exportToExcel, exportToCSV, exportActionLogToExcel } from './export.js';
 import { HISTORIC_TYPHOON_PRESETS, generateAutomaticDrillScenario, fetchLivePlatformWeather } from './live-feed.js';
 
 class AppController {
     constructor() {
         this.records = this.loadRecords();
+        this.actionLogs = this.loadActionLogs();
+        this.activeLogFilter = 'ALL';
         this.homeCoords = { ...RONG_DOI_DEFAULT };
         this.bkCoords = { ...BK_TNHA_DEFAULT };
         this.activeZoneModal = 'GREEN';
@@ -45,6 +47,7 @@ class AppController {
         this.initDOM();
         this.initEvents();
         this.initClock();
+        this.applyRolePermissions();
         this.renderAll();
     }
 
@@ -66,6 +69,54 @@ class AppController {
         }
     }
 
+    loadActionLogs() {
+        try {
+            const saved = localStorage.getItem('rdp_storm_action_logs');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    saveActionLogs() {
+        try {
+            localStorage.setItem('rdp_storm_action_logs', JSON.stringify(this.actionLogs));
+        } catch (e) {
+            console.error('Failed to save action logs:', e);
+        }
+    }
+
+    logAction(category, details, customStation = null) {
+        const station = customStation || this.syncEngine.getStation();
+        const now = new Date();
+        const timestampFormatted = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+        const entry = {
+            id: `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            timestamp: Date.now(),
+            timestampFormatted,
+            stationRole: station.id,
+            stationName: station.name,
+            stationShort: station.shortName,
+            badgeColor: station.badgeColor || '#38bdf8',
+            icon: station.icon || '🛡️',
+            category: category.toUpperCase(),
+            details
+        };
+
+        this.actionLogs.unshift(entry);
+        if (this.actionLogs.length > 500) {
+            this.actionLogs.pop();
+        }
+
+        this.saveActionLogs();
+        this.syncEngine.broadcast('action_logged', entry);
+
+        if (document.getElementById('modal-action-log')?.classList.contains('active')) {
+            this.renderActionLogModal();
+        }
+    }
+
     handleRemoteSync(message) {
         if (message.action === 'records_updated') {
             this.records = message.payload || [];
@@ -76,6 +127,78 @@ class AppController {
             if (document.getElementById('modal-checklist').classList.contains('active')) {
                 this.renderChecklistModal(this.activeZoneModal);
             }
+        } else if (message.action === 'action_logged') {
+            const newLog = message.payload;
+            if (newLog && !this.actionLogs.some(l => l.id === newLog.id)) {
+                this.actionLogs.unshift(newLog);
+                if (this.actionLogs.length > 500) this.actionLogs.pop();
+                this.saveActionLogs();
+                if (document.getElementById('modal-action-log')?.classList.contains('active')) {
+                    this.renderActionLogModal();
+                }
+            }
+        }
+    }
+
+    applyRolePermissions() {
+        const station = this.syncEngine.getStation();
+        const syncLabel = document.getElementById('sync-label');
+        if (syncLabel) {
+            syncLabel.textContent = `Live Sync: ${station.name} (${this.syncEngine.roomName})`;
+        }
+
+        // Storm data input form elements
+        const formInputs = this.form?.querySelectorAll('input, select, button[type="submit"]');
+        const btnReset = document.getElementById('btn-reset');
+        const presetSelect = document.getElementById('preset-selector');
+        const btnGenDrill = document.getElementById('btn-generate-drill');
+        const btnFetchWx = document.getElementById('btn-fetch-live-wx');
+
+        // Check station authorization
+        const canInput = !!station.canInputStormData;
+
+        if (formInputs) {
+            formInputs.forEach(el => {
+                if (el.id !== 'btn-animate') {
+                    el.disabled = !canInput;
+                }
+            });
+        }
+
+        if (btnReset) btnReset.disabled = !canInput;
+        if (presetSelect) presetSelect.disabled = !canInput;
+        if (btnGenDrill) btnGenDrill.disabled = !canInput;
+        if (btnFetchWx) btnFetchWx.disabled = !canInput;
+
+        // Visual notice if storm input is disabled
+        let notice = document.getElementById('station-auth-notice');
+        if (!notice && this.form) {
+            notice = document.createElement('div');
+            notice.id = 'station-auth-notice';
+            notice.className = 'readonly-station-banner';
+            this.form.parentElement.insertBefore(notice, this.form);
+        }
+
+        if (notice) {
+            if (!canInput) {
+                notice.style.display = 'flex';
+                notice.innerHTML = `
+                    <span>🔒</span>
+                    <div>
+                        <strong>Station Access [${station.shortName}]:</strong> Storm data input is restricted to <em>Offshore CCR – CRT</em>. Checklists authorized: ${station.canTickChecklist ? '✅ Yes' : '❌ Read-Only'}.
+                    </div>
+                `;
+            } else {
+                notice.style.display = 'none';
+            }
+        }
+
+        // Update action log current station text
+        const logStationBadge = document.getElementById('log-current-station');
+        if (logStationBadge) {
+            logStationBadge.textContent = `Active: ${station.shortName}`;
+            logStationBadge.style.color = station.badgeColor;
+            logStationBadge.style.background = `${station.badgeColor}22`;
         }
     }
 
@@ -89,12 +212,6 @@ class AppController {
         this.metricDistance = document.getElementById('metric-distance');
         this.metricTp = document.getElementById('metric-tp');
         this.metricApproach = document.getElementById('metric-approach');
-
-        const now = new Date();
-        const dd = String(now.getDate()).padStart(2, '0');
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const min = String(now.getMinutes()).padStart(2, '0');
 
         this.resetForm();
     }
@@ -129,11 +246,22 @@ class AppController {
     initEvents() {
         this.form.addEventListener('submit', (e) => {
             e.preventDefault();
+            const station = this.syncEngine.getStation();
+            if (!station.canInputStormData) {
+                alert(`⚠️ Access Denied: Station "${station.name}" does not have authorization to input storm waypoint data. Switch to "Offshore Central Control Room (CCR – CRT)" in Live Sync.`);
+                return;
+            }
             this.handleFormSubmit();
         });
 
         document.getElementById('btn-reset').addEventListener('click', (e) => {
             e.preventDefault();
+            const station = this.syncEngine.getStation();
+            if (!station.canInputStormData) {
+                alert(`⚠️ Access Denied: Station "${station.name}" cannot reset tracking data.`);
+                return;
+            }
+
             this.records = [];
             try {
                 localStorage.removeItem('rdp_storm_tracker_records');
@@ -148,6 +276,7 @@ class AppController {
                 }
             }
             this.renderAll();
+            this.logAction('RESET', `Cleared storm tracking waypoints and reset dashboard to Standby.`);
         });
 
         document.getElementById('btn-animate').addEventListener('click', () => {
@@ -169,23 +298,44 @@ class AppController {
         document.getElementById('toggle-240').addEventListener('change', updateRings);
 
         document.getElementById('preset-selector').addEventListener('change', (e) => {
+            const station = this.syncEngine.getStation();
+            if (!station.canInputStormData) {
+                alert(`⚠️ Access Denied: Station "${station.name}" cannot load scenarios.`);
+                e.target.value = '';
+                return;
+            }
+
             const val = e.target.value;
             if (!val) return;
             const idx = parseInt(val.replace('preset_', ''));
             const preset = HISTORIC_TYPHOON_PRESETS[idx];
             if (preset && confirm(`Load scenario: "${preset.name}"?`)) {
                 this.loadPreset(preset);
+                this.logAction('DRILL', `Loaded Historic Typhoon Scenario: "${preset.name}" (${preset.records.length} waypoints)`);
             }
         });
 
-        // Auto-Generate Dynamic Drill Scenario (Day 1-3 starting in Green/Yellow zone)
+        // Auto-Generate Dynamic Drill Scenario
         document.getElementById('btn-generate-drill').addEventListener('click', () => {
+            const station = this.syncEngine.getStation();
+            if (!station.canInputStormData) {
+                alert(`⚠️ Access Denied: Station "${station.name}" cannot generate drill scenarios.`);
+                return;
+            }
+
             const drill = generateAutomaticDrillScenario();
             this.loadPreset(drill);
+            this.logAction('DRILL', `Generated 3-Day Scenario: "${drill.name}" (Initial Dist: ${drill.records[0]?.distanceNM?.toFixed(1) || '950'} NM, Initial Winds: ${drill.records[0]?.windSpeed} kts)`);
             alert(`🎲 ${drill.name} Generated!\nTrack starts in Green Zone on Day 1 and escalates towards Rong Doi across 3 days.`);
         });
 
         document.getElementById('btn-fetch-live-wx').addEventListener('click', async () => {
+            const station = this.syncEngine.getStation();
+            if (!station.canInputStormData) {
+                alert(`⚠️ Access Denied: Station "${station.name}" cannot update platform weather.`);
+                return;
+            }
+
             const btn = document.getElementById('btn-fetch-live-wx');
             btn.textContent = '⏳ Fetching...';
             const wx = await fetchLivePlatformWeather(this.homeCoords.lat, this.homeCoords.lon);
@@ -193,6 +343,7 @@ class AppController {
             if (wx) {
                 document.getElementById('lt-wind-speed').value = wx.windSpeedKnots;
                 document.getElementById('lt-wind-gust').value = wx.windGustKnots;
+                this.logAction('WEATHER', `Fetched Live Offshore Weather at RDP: Wind ${wx.windSpeedKnots} kts, Gust ${wx.windGustKnots} kts, Surface Pressure ${wx.surfacePressureHpa} hPa`);
                 alert(`Updated Rong Doi Platform weather:\nWind Speed: ${wx.windSpeedKnots} kts, Gust: ${wx.windGustKnots} kts, Surface Pressure: ${wx.surfacePressureHpa} hPa`);
             } else {
                 alert('Could not reach weather server. Please enter values manually.');
@@ -203,6 +354,42 @@ class AppController {
             const stormName = this.records[0]?.stormName || 'RDP_Storm_Track';
             exportToExcel(this.records, stormName);
         });
+
+        // Action Log Modal Buttons & Events
+        const btnOpenActionLog = document.getElementById('btn-open-action-log');
+        if (btnOpenActionLog) {
+            btnOpenActionLog.addEventListener('click', () => {
+                this.renderActionLogModal();
+                this.openModal('modal-action-log');
+            });
+        }
+
+        const btnExportActionLog = document.getElementById('btn-export-action-log');
+        if (btnExportActionLog) {
+            btnExportActionLog.addEventListener('click', () => {
+                const logsToExport = this.getFilteredActionLogs();
+                exportActionLogToExcel(logsToExport);
+            });
+        }
+
+        const btnClearActionLog = document.getElementById('btn-clear-action-log');
+        if (btnClearActionLog) {
+            btnClearActionLog.addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear all operational activity logs?')) {
+                    this.actionLogs = [];
+                    this.saveActionLogs();
+                    this.renderActionLogModal();
+                }
+            });
+        }
+
+        const logFilterSelect = document.getElementById('action-log-filter');
+        if (logFilterSelect) {
+            logFilterSelect.addEventListener('change', (e) => {
+                this.activeLogFilter = e.target.value;
+                this.renderActionLogModal();
+            });
+        }
 
         // Modals
         document.getElementById('btn-open-green').addEventListener('click', () => this.openChecklistModal('GREEN'));
@@ -233,9 +420,15 @@ class AppController {
         });
 
         document.getElementById('btn-reset-current-checklist').addEventListener('click', () => {
+            const station = this.syncEngine.getStation();
+            if (!station.canTickChecklist) {
+                alert(`⚠️ Access Denied: Station "${station.name}" cannot reset checklists.`);
+                return;
+            }
             if (confirm(`Reset checklist for ${this.activeZoneModal} zone?`)) {
                 this.checklists.resetZone(this.activeZoneModal);
                 this.renderChecklistModal(this.activeZoneModal);
+                this.logAction('CHECKLIST', `Reset all SOP action items in ${this.activeZoneModal} Alert Zone checklist.`);
             }
         });
 
@@ -249,17 +442,16 @@ class AppController {
             const newRole = syncRoleSelect?.value || 'CCR_CRT';
             this.syncEngine.setRoomName(newRoom);
             this.syncEngine.saveUserRole(newRole);
+            this.applyRolePermissions();
             this.closeModal('modal-sync');
-            const roleName = syncRoleSelect ? syncRoleSelect.options[syncRoleSelect.selectedIndex].text.split('(')[0].trim() : newRole;
-            alert(`✅ Live Collaboration Connected!\nChannel: "${newRoom}"\nStation: ${roleName}`);
+
+            const currentStation = this.syncEngine.getStation();
+            this.logAction('STATION', `Operating station switched to ${currentStation.name} on channel "${newRoom}"`);
+            alert(`✅ Live Collaboration Connected!\nChannel: "${newRoom}"\nStation: ${currentStation.name}`);
         });
 
-        window.addEventListener('sync-status-changed', (e) => {
-            const label = document.getElementById('sync-label');
-            if (label && e.detail) {
-                const cloudState = e.detail.isConnectedToCloud ? 'Online Sync' : (e.detail.isOnline ? 'CCR Local' : 'Offline');
-                label.textContent = `Live Sync: ${cloudState} (${e.detail.room})`;
-            }
+        window.addEventListener('sync-status-changed', () => {
+            this.applyRolePermissions();
         });
     }
 
@@ -307,6 +499,8 @@ class AppController {
         this.records.push(newRecord);
         this.saveRecords();
         this.renderAll();
+
+        this.logAction('WAYPOINT', `Tracked Storm Waypoint #${this.records.length}: ${stormName} at ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E | Wind: ${windSpeed} kts (Gust: ${windGust} kts) | Dist: ${distanceNM.toFixed(1)} NM | Tp: ${arrival.hasPassed ? 'Passed' : arrival.tp.toFixed(1) + 'h'}`);
 
         sfx.playChime();
     }
@@ -424,6 +618,9 @@ class AppController {
             return;
         }
 
+        const station = this.syncEngine.getStation();
+        const canDelete = station.canInputStormData;
+
         this.tableBody.innerHTML = this.records.map((r, i) => {
             const distToBk = calculateDistanceNM(r.lat, r.lon, this.bkCoords.lat, this.bkCoords.lon);
             return `
@@ -438,20 +635,27 @@ class AppController {
                     <td>${r.hasPassed ? 'Passed' : (r.tp ? r.tp.toFixed(1) + 'h' : '0h')}</td>
                     <td>${r.ltWindSpeed || 0} / ${r.ltWindGust || 0} kts</td>
                     <td>
-                        <button class="btn btn-danger btn-delete-row" data-id="${r.id}" style="padding: 2px 6px; font-size: 0.7rem;">Delete</button>
+                        <button class="btn btn-danger btn-delete-row" data-id="${r.id}" style="padding: 2px 6px; font-size: 0.7rem;" ${canDelete ? '' : 'disabled title="Restricted to Offshore CCR"'}>Delete</button>
                     </td>
                 </tr>
             `;
         }).join('');
 
-        this.tableBody.querySelectorAll('.btn-delete-row').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const id = btn.getAttribute('data-id');
-                this.records = this.records.filter(r => r.id !== id);
-                this.saveRecords();
-                this.renderAll();
+        if (canDelete) {
+            this.tableBody.querySelectorAll('.btn-delete-row').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-id');
+                    const deletedIdx = this.records.findIndex(r => r.id === id);
+                    const deletedRec = this.records[deletedIdx];
+                    this.records = this.records.filter(r => r.id !== id);
+                    this.saveRecords();
+                    this.renderAll();
+                    if (deletedRec) {
+                        this.logAction('WAYPOINT', `Deleted storm waypoint #${deletedIdx + 1}: ${deletedRec.stormName} (${deletedRec.lat.toFixed(2)}°N, ${deletedRec.lon.toFixed(2)}°E)`);
+                    }
+                });
             });
-        });
+        }
     }
 
     openChecklistModal(zone) {
@@ -464,9 +668,18 @@ class AppController {
         const def = CHECKLIST_DEFINITIONS[zone];
         if (!def) return;
 
+        const station = this.syncEngine.getStation();
+        const canTick = !!station.canTickChecklist;
+
         document.getElementById('checklist-modal-title').innerHTML = `
             <span style="color: ${def.color};">●</span> ${def.title}
         `;
+
+        const resetBtn = document.getElementById('btn-reset-current-checklist');
+        if (resetBtn) {
+            resetBtn.disabled = !canTick;
+            resetBtn.title = canTick ? '' : 'Read-only mode for station Others';
+        }
 
         const body = document.getElementById('checklist-modal-body');
         const state = this.checklists.states[zone] || {};
@@ -480,7 +693,7 @@ class AppController {
 
             return `
                 <div class="checklist-item-row ${isChecked ? 'completed' : ''}" data-idx="${idx}">
-                    <input type="checkbox" id="chk-${zone}-${idx}" ${isChecked ? 'checked' : ''} />
+                    <input type="checkbox" id="chk-${zone}-${idx}" ${isChecked ? 'checked' : ''} ${canTick ? '' : 'disabled'} />
                     <div style="flex: 1;">
                         <div class="checklist-role-badge-row">
                             <span class="checklist-role-badge" style="color: ${parsed.style.color}; background: ${parsed.style.bg}; border: 1px solid ${parsed.style.border};">
@@ -494,16 +707,82 @@ class AppController {
             `;
         }).join('');
 
-        body.querySelectorAll('input[type="checkbox"]').forEach(chk => {
-            chk.addEventListener('change', (e) => {
-                const row = e.target.closest('.checklist-item-row');
-                const idx = parseInt(row.getAttribute('data-idx'));
-                const parsed = parseChecklistItem(def.items[idx]);
-                this.checklists.toggleItem(zone, idx, parsed.role);
-                this.renderChecklistModal(zone);
-                this.updateChecklistBadges();
+        if (canTick) {
+            body.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                chk.addEventListener('change', (e) => {
+                    const row = e.target.closest('.checklist-item-row');
+                    const idx = parseInt(row.getAttribute('data-idx'));
+                    const parsed = parseChecklistItem(def.items[idx]);
+                    const newState = this.checklists.toggleItem(zone, idx, parsed.role);
+                    this.renderChecklistModal(zone);
+                    this.updateChecklistBadges();
+
+                    const actionStatus = newState ? 'COMPLETED' : 'UNCHECKED';
+                    this.logAction('CHECKLIST', `[${zone} Alert] ${actionStatus} action item for ${parsed.role}: "${parsed.action}"`);
+                });
             });
-        });
+        }
+    }
+
+    getFilteredActionLogs() {
+        if (this.activeLogFilter === 'ALL') {
+            return this.actionLogs;
+        }
+        if (['CCR_CRT', 'OIM_IM', 'ONSHORE_IMT', 'LOGISTICS_VTSB', 'RADIO_TELECOMS', 'OTHERS'].includes(this.activeLogFilter)) {
+            return this.actionLogs.filter(l => l.stationRole === this.activeLogFilter);
+        }
+        return this.actionLogs.filter(l => l.category === this.activeLogFilter);
+    }
+
+    renderActionLogModal() {
+        const tbody = document.getElementById('action-log-tbody');
+        const countTotal = document.getElementById('log-count-total');
+        const stationBadge = document.getElementById('log-current-station');
+        const currentStation = this.syncEngine.getStation();
+
+        if (countTotal) {
+            countTotal.textContent = `${this.actionLogs.length} Total Event(s)`;
+        }
+
+        if (stationBadge) {
+            stationBadge.textContent = `Active: ${currentStation.shortName}`;
+            stationBadge.style.color = currentStation.badgeColor;
+            stationBadge.style.background = `${currentStation.badgeColor}22`;
+        }
+
+        const filtered = this.getFilteredActionLogs();
+
+        if (!tbody) return;
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 24px;">No operational activities match the selected filter.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = filtered.map((log, i) => {
+            const catClass = `cat-${(log.category || 'waypoint').toLowerCase()}`;
+            const badgeColor = log.badgeColor || '#38bdf8';
+
+            return `
+                <tr>
+                    <td style="font-family: var(--font-mono); color: var(--text-dim);">${i + 1}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.75rem; white-space: nowrap;">${log.timestampFormatted || new Date(log.timestamp).toLocaleString()}</td>
+                    <td>
+                        <span class="log-station-badge" style="color: ${badgeColor}; background: ${badgeColor}18; border: 1px solid ${badgeColor}40;">
+                            ${log.icon || '🛡️'} ${log.stationShort || log.stationName}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="log-cat-badge ${catClass}">${log.category}</span>
+                    </td>
+                    <td style="line-height: 1.4; color: var(--text-main);">${log.details}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
     updateChecklistBadges() {
