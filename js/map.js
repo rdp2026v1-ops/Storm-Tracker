@@ -360,16 +360,20 @@ export class MarineMap {
         // Play thunder sound effect and store reference to stop synchronously
         this.currentAudio = sfx.playThunder();
 
-        const latestWind = records[records.length - 1]?.windSpeed || 34;
-        const animFactor = Math.max(10, latestWind) / 34;
-        const animSizePx = Math.max(30, Math.min(130, Math.round(50 * animFactor)));
-        const animHalfPx = Math.round(animSizePx / 2);
+        const firstWind = Math.max(10, records[0]?.windSpeed || 34);
+        const initFactor = firstWind / 34;
+        const initSizePx = Math.max(26, Math.min(130, Math.round(50 * initFactor)));
+        const initHalfPx = Math.round(initSizePx / 2);
 
         const animIcon = L.divIcon({
-            className: 'storm-animating-vortex',
-            html: `<img id="rotating-storm-img" src="assets/images/storm.png" alt="Simulating Storm" style="width: ${animSizePx}px; height: ${animSizePx}px;" />`,
-            iconSize: [animSizePx, animSizePx],
-            iconAnchor: [animHalfPx, animHalfPx]
+            className: 'storm-animating-vortex-wrapper',
+            html: `
+                <div id="animating-vortex-box" style="width: ${initSizePx}px; height: ${initSizePx}px; margin-left: -${initHalfPx}px; margin-top: -${initHalfPx}px; display: flex; align-items: center; justify-content: center; position: relative;">
+                    <img id="rotating-storm-img" src="assets/images/storm.png" alt="Simulating Storm" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.8)); transition: width 0.05s linear, height 0.05s linear;" />
+                </div>
+            `,
+            iconSize: [0, 0],
+            iconAnchor: [0, 0]
         });
 
         let currentIdx = 0;
@@ -390,13 +394,31 @@ export class MarineMap {
 
             const p1 = records[currentIdx];
             const p2 = records[currentIdx + 1];
+            const progress = step / totalSteps;
 
-            const curLat = p1.lat + (p2.lat - p1.lat) * (step / totalSteps);
-            const curLon = p1.lon + (p2.lon - p1.lon) * (step / totalSteps);
+            const curLat = p1.lat + (p2.lat - p1.lat) * progress;
+            const curLon = p1.lon + (p2.lon - p1.lon) * progress;
+
+            // Interpolate wind speed between current and next waypoint
+            const w1 = Math.max(10, p1.windSpeed || 34);
+            const w2 = Math.max(10, p2.windSpeed || 34);
+            const curWind = w1 + (w2 - w1) * progress;
+
+            // Compute exact proportional icon size (50px baseline at 34 kts)
+            const curFactor = curWind / 34;
+            const curSizePx = Math.max(26, Math.min(130, Math.round(50 * curFactor)));
+            const curHalfPx = Math.round(curSizePx / 2);
 
             this.animatingMarker.setLatLng([curLat, curLon]);
 
+            const box = document.getElementById('animating-vortex-box');
             const img = document.getElementById('rotating-storm-img');
+            if (box) {
+                box.style.width = `${curSizePx}px`;
+                box.style.height = `${curSizePx}px`;
+                box.style.marginLeft = `-${curHalfPx}px`;
+                box.style.marginTop = `-${curHalfPx}px`;
+            }
             if (img) {
                 const angle = (step * 14 + currentIdx * 360) % 360;
                 img.style.transform = `rotate(${angle}deg)`;
@@ -408,7 +430,7 @@ export class MarineMap {
                 currentIdx++;
             }
 
-            // 100ms per step (2x slower, smooth motion)
+            // 100ms per step (smooth motion)
             this.animationTimer = setTimeout(rotateStep, 100);
         };
 

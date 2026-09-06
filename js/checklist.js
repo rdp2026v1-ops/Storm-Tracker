@@ -260,11 +260,9 @@ export class ChecklistManager {
     }
 
     resetZone(zone) {
-        if (this.states[zone]) {
-            this.states[zone] = {};
-            this.saveStates();
-            if (this.onStateChange) this.onStateChange(this.states);
-        }
+        this.states[zone] = {};
+        this.saveStates();
+        if (this.onStateChange) this.onStateChange(this.states);
     }
 
     resetAll() {

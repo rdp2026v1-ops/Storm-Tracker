@@ -36,12 +36,12 @@ class AppController {
 
         this.checklists = new ChecklistManager('rdp_storm_tracker_checklists', () => {
             this.updateChecklistBadges();
-            this.syncEngine.broadcast('checklist_updated', this.checklists.states);
+            this.syncEngine.broadcast('checklist_updated', this.checklists.states, true);
         });
 
         this.syncEngine = new SyncEngine({
             roomName: 'rong-doi-ops',
-            onDataReceived: (data) => this.handleRemoteSync(data)
+            onDataReceived: (data, source) => this.handleRemoteSync(data, source)
         });
 
         this.initDOM();
@@ -49,6 +49,9 @@ class AppController {
         this.initClock();
         this.applyRolePermissions();
         this.renderAll();
+
+        // Broadcast state request to discover active peers upon launch
+        setTimeout(() => this.syncEngine.requestState(), 1000);
     }
 
     loadRecords() {
@@ -63,7 +66,7 @@ class AppController {
     saveRecords() {
         try {
             localStorage.setItem('rdp_storm_tracker_records', JSON.stringify(this.records));
-            this.syncEngine.broadcast('records_updated', this.records);
+            this.syncEngine.broadcast('records_updated', this.records, true);
         } catch (e) {
             console.error('Failed to save records:', e);
         }
@@ -110,21 +113,59 @@ class AppController {
         }
 
         this.saveActionLogs();
-        this.syncEngine.broadcast('action_logged', entry);
+        this.syncEngine.broadcast('action_logged', entry, false);
 
         if (document.getElementById('modal-action-log')?.classList.contains('active')) {
             this.renderActionLogModal();
         }
     }
 
-    handleRemoteSync(message) {
-        if (message.action === 'records_updated') {
+    handleRemoteSync(message, source = 'network') {
+        if (!message || !message.action) return;
+
+        if (message.action === 'state_request') {
+            // A remote peer or new browser connected and is asking for current channel state
+            if (this.records.length > 0 || Object.keys(this.checklists.states).length > 0 || this.actionLogs.length > 0) {
+                this.syncEngine.broadcast('state_sync', {
+                    records: this.records,
+                    checklists: this.checklists.states,
+                    actionLogs: this.actionLogs
+                }, true);
+            }
+        } else if (message.action === 'state_sync') {
+            const data = message.payload;
+            if (data) {
+                let updated = false;
+                if (Array.isArray(data.records) && data.records.length >= 0) {
+                    this.records = data.records;
+                    try { localStorage.setItem('rdp_storm_tracker_records', JSON.stringify(this.records)); } catch (e) {}
+                    updated = true;
+                }
+                if (data.checklists) {
+                    this.checklists.states = data.checklists;
+                    this.checklists.saveStates();
+                    this.updateChecklistBadges();
+                }
+                if (Array.isArray(data.actionLogs) && data.actionLogs.length > 0) {
+                    // Merge action logs without duplicates
+                    const existingIds = new Set(this.actionLogs.map(l => l.id));
+                    data.actionLogs.forEach(l => {
+                        if (!existingIds.has(l.id)) this.actionLogs.push(l);
+                    });
+                    this.actionLogs.sort((a, b) => b.timestamp - a.timestamp);
+                    this.saveActionLogs();
+                }
+                if (updated) this.renderAll();
+            }
+        } else if (message.action === 'records_updated') {
             this.records = message.payload || [];
+            try { localStorage.setItem('rdp_storm_tracker_records', JSON.stringify(this.records)); } catch (e) {}
             this.renderAll();
         } else if (message.action === 'checklist_updated') {
-            this.checklists.states = message.payload || {};
+            this.checklists.states = message.payload || { RED: {}, YELLOW: {}, GREEN: {} };
+            this.checklists.saveStates();
             this.updateChecklistBadges();
-            if (document.getElementById('modal-checklist').classList.contains('active')) {
+            if (document.getElementById('modal-checklist')?.classList.contains('active')) {
                 this.renderChecklistModal(this.activeZoneModal);
             }
         } else if (message.action === 'action_logged') {
@@ -372,17 +413,6 @@ class AppController {
             });
         }
 
-        const btnClearActionLog = document.getElementById('btn-clear-action-log');
-        if (btnClearActionLog) {
-            btnClearActionLog.addEventListener('click', () => {
-                if (confirm('Are you sure you want to clear all operational activity logs?')) {
-                    this.actionLogs = [];
-                    this.saveActionLogs();
-                    this.renderActionLogModal();
-                }
-            });
-        }
-
         const logFilterSelect = document.getElementById('action-log-filter');
         if (logFilterSelect) {
             logFilterSelect.addEventListener('change', (e) => {
@@ -419,18 +449,22 @@ class AppController {
             });
         });
 
-        document.getElementById('btn-reset-current-checklist').addEventListener('click', () => {
-            const station = this.syncEngine.getStation();
-            if (!station.canTickChecklist) {
-                alert(`⚠️ Access Denied: Station "${station.name}" cannot reset checklists.`);
-                return;
-            }
-            if (confirm(`Reset checklist for ${this.activeZoneModal} zone?`)) {
-                this.checklists.resetZone(this.activeZoneModal);
-                this.renderChecklistModal(this.activeZoneModal);
-                this.logAction('CHECKLIST', `Reset all SOP action items in ${this.activeZoneModal} Alert Zone checklist.`);
-            }
-        });
+        const resetChecklistBtn = document.getElementById('btn-reset-current-checklist');
+        if (resetChecklistBtn) {
+            resetChecklistBtn.addEventListener('click', () => {
+                const station = this.syncEngine.getStation();
+                if (!station.canTickChecklist) {
+                    alert(`⚠️ Access Denied: Station "${station.name}" cannot reset checklists.`);
+                    return;
+                }
+                if (confirm(`Are you sure you want to reset all checklist items for the ${this.activeZoneModal} zone?`)) {
+                    this.checklists.resetZone(this.activeZoneModal);
+                    this.renderChecklistModal(this.activeZoneModal);
+                    this.updateChecklistBadges();
+                    this.logAction('CHECKLIST', `Reset all SOP action items in ${this.activeZoneModal} Alert Zone checklist.`);
+                }
+            });
+        }
 
         const syncRoomInput = document.getElementById('sync-room-name');
         const syncRoleSelect = document.getElementById('sync-user-role');
@@ -438,16 +472,16 @@ class AppController {
         if (syncRoleSelect) syncRoleSelect.value = this.syncEngine.userRole;
 
         document.getElementById('btn-save-sync-config').addEventListener('click', () => {
-            const newRoom = (syncRoomInput?.value || '').trim() || 'rong-doi-ops';
+            const rawRoom = (syncRoomInput?.value || '').trim() || 'rong-doi-ops';
             const newRole = syncRoleSelect?.value || 'CCR_CRT';
-            this.syncEngine.setRoomName(newRoom);
+            this.syncEngine.setRoomName(rawRoom);
             this.syncEngine.saveUserRole(newRole);
             this.applyRolePermissions();
             this.closeModal('modal-sync');
 
             const currentStation = this.syncEngine.getStation();
-            this.logAction('STATION', `Operating station switched to ${currentStation.name} on channel "${newRoom}"`);
-            alert(`✅ Live Collaboration Connected!\nChannel: "${newRoom}"\nStation: ${currentStation.name}`);
+            this.logAction('STATION', `Operating station set to ${currentStation.name} on Channel "${this.syncEngine.roomName}"`);
+            alert(`✅ Live Collaboration Connected!\nChannel: "${this.syncEngine.roomName}"\nStation: ${currentStation.name}`);
         });
 
         window.addEventListener('sync-status-changed', () => {
