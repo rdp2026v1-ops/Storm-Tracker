@@ -24,9 +24,9 @@ A modern, real-time, interactive GIS web application for tracking tropical depre
 
 ## 📋 Emergency Response Checklists (SOP Compliance)
 
-- **Green Alert (1000 NM to 750 NM)**: 11 operational action items for OIM, Telecom Technician, CRT, Medic, and onshore DIM.
-- **Yellow Alert (750 NM to 240 NM)**: 10 action items for down-manning, securing RDP & BK-TNHA, FSO offtake shutdown, and helicopter logistics.
-- **Red Alert (< 240 NM)**: 10 action items for full ESD-1 emergency shutdown, SCSSV closure verification, final helicopter evacuation, and locking medical narcotics.
+- **Green Alert (1000 NM to 750 NM)**: 20 operational action items for OIM, Telecom Technician, CRT, Medic, and onshore DIM.
+- **Yellow Alert (750 NM to 240 NM)**: 17 action items for down-manning, securing RDP & BK-TNHA, FSO offtake shutdown, and helicopter logistics.
+- **Red Alert (< 240 NM)**: 16 action items for full ESD-1 emergency shutdown, SCSSV closure verification, final helicopter evacuation, and locking medical narcotics.
 
 ---
 
