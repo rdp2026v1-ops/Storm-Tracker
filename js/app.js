@@ -341,16 +341,16 @@ class AppController {
         document.getElementById('preset-selector').addEventListener('change', (e) => {
             const station = this.syncEngine.getStation();
             if (!station.canInputStormData) {
-                alert(`⚠️ Access Denied: Station "${station.name}" cannot load scenarios.`);
+                alert(`⚠️ Access Denied: Station "${station.name}" cannot load scenarios. Switch to "Offshore Central Control Room (CCR – CRT)" in Live Sync.`);
                 e.target.value = '';
                 return;
             }
 
             const val = e.target.value;
             if (!val) return;
-            const idx = parseInt(val.replace('preset_', ''));
+            const idx = parseInt(val.replace('preset_', ''), 10);
             const preset = HISTORIC_TYPHOON_PRESETS[idx];
-            if (preset && confirm(`Load scenario: "${preset.name}"?`)) {
+            if (preset) {
                 this.loadPreset(preset);
                 this.logAction('DRILL', `Loaded Historic Typhoon Scenario: "${preset.name}" (${preset.records.length} waypoints)`);
             }
