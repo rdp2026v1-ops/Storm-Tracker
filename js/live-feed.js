@@ -26,6 +26,50 @@ export const HISTORIC_TYPHOON_PRESETS = [
             { stormName: 'YAGI', date: 'Day 3', time: '08:00', lat: 19.4, lon: 113.8, windSpeed: 120, windGust: 145, movingSpeed: 8, movingDirection: 'WNW', ltWindSpeed: 18, ltWindGust: 22 },
             { stormName: 'YAGI', date: 'Day 3', time: '20:00', lat: 19.9, lon: 110.8, windSpeed: 130, windGust: 160, movingSpeed: 11, movingDirection: 'WNW', ltWindSpeed: 20, ltWindGust: 25 }
         ]
+    },
+    {
+        name: 'Historic Typhoon Linda (Nov 1997)',
+        description: 'Catastrophic southern typhoon tracking across Nam Con Son Basin, Con Dao, and Ca Mau.',
+        records: [
+            { stormName: 'LINDA', date: 'Day 1', time: '06:00', lat: 8.2, lon: 114.5, windSpeed: 45, windGust: 55, movingSpeed: 13, movingDirection: 'W', ltWindSpeed: 20, ltWindGust: 25 },
+            { stormName: 'LINDA', date: 'Day 1', time: '18:00', lat: 8.4, lon: 112.0, windSpeed: 55, windGust: 70, movingSpeed: 13, movingDirection: 'W', ltWindSpeed: 28, ltWindGust: 35 },
+            { stormName: 'LINDA', date: 'Day 2', time: '06:00', lat: 8.6, lon: 109.5, windSpeed: 65, windGust: 80, movingSpeed: 14, movingDirection: 'W', ltWindSpeed: 48, ltWindGust: 62 },
+            { stormName: 'LINDA', date: 'Day 2', time: '18:00', lat: 8.7, lon: 106.8, windSpeed: 70, windGust: 85, movingSpeed: 14, movingDirection: 'W', ltWindSpeed: 62, ltWindGust: 78 },
+            { stormName: 'LINDA', date: 'Day 3', time: '06:00', lat: 8.9, lon: 104.2, windSpeed: 60, windGust: 75, movingSpeed: 14, movingDirection: 'W', ltWindSpeed: 35, ltWindGust: 45 }
+        ]
+    },
+    {
+        name: 'Typhoon Durian (Dec 2006)',
+        description: 'Dangerous typhoon sweeping westward into southern offshore waters toward Vung Tau & Binh Thuan.',
+        records: [
+            { stormName: 'DURIAN', date: 'Day 1', time: '06:00', lat: 12.8, lon: 117.2, windSpeed: 80, windGust: 100, movingSpeed: 11, movingDirection: 'W', ltWindSpeed: 18, ltWindGust: 22 },
+            { stormName: 'DURIAN', date: 'Day 1', time: '18:00', lat: 12.2, lon: 114.6, windSpeed: 85, windGust: 105, movingSpeed: 12, movingDirection: 'WSW', ltWindSpeed: 25, ltWindGust: 32 },
+            { stormName: 'DURIAN', date: 'Day 2', time: '06:00', lat: 11.5, lon: 112.1, windSpeed: 75, windGust: 92, movingSpeed: 12, movingDirection: 'WSW', ltWindSpeed: 38, ltWindGust: 48 },
+            { stormName: 'DURIAN', date: 'Day 2', time: '18:00', lat: 10.7, lon: 109.8, windSpeed: 70, windGust: 85, movingSpeed: 12, movingDirection: 'WSW', ltWindSpeed: 52, ltWindGust: 65 },
+            { stormName: 'DURIAN', date: 'Day 3', time: '06:00', lat: 10.2, lon: 107.5, windSpeed: 55, windGust: 70, movingSpeed: 11, movingDirection: 'WSW', ltWindSpeed: 40, ltWindGust: 50 }
+        ]
+    },
+    {
+        name: 'Typhoon Ketsana (Sept 2009)',
+        description: 'Major typhoon tracking westward across the central East Sea toward Central Vietnam.',
+        records: [
+            { stormName: 'KETSANA', date: 'Day 1', time: '06:00', lat: 15.2, lon: 117.8, windSpeed: 50, windGust: 65, movingSpeed: 10, movingDirection: 'W', ltWindSpeed: 14, ltWindGust: 18 },
+            { stormName: 'KETSANA', date: 'Day 1', time: '18:00', lat: 15.5, lon: 115.3, windSpeed: 65, windGust: 80, movingSpeed: 11, movingDirection: 'W', ltWindSpeed: 18, ltWindGust: 24 },
+            { stormName: 'KETSANA', date: 'Day 2', time: '06:00', lat: 15.8, lon: 113.0, windSpeed: 80, windGust: 100, movingSpeed: 11, movingDirection: 'W', ltWindSpeed: 24, ltWindGust: 30 },
+            { stormName: 'KETSANA', date: 'Day 2', time: '18:00', lat: 15.9, lon: 110.6, windSpeed: 90, windGust: 110, movingSpeed: 12, movingDirection: 'W', ltWindSpeed: 28, ltWindGust: 36 },
+            { stormName: 'KETSANA', date: 'Day 3', time: '08:00', lat: 15.8, lon: 108.8, windSpeed: 85, windGust: 105, movingSpeed: 12, movingDirection: 'W', ltWindSpeed: 22, ltWindGust: 28 }
+        ]
+    },
+    {
+        name: 'Typhoon Molave (Oct 2020)',
+        description: 'High-speed Category 4 equivalent typhoon crossing the East Sea at over 25 km/h.',
+        records: [
+            { stormName: 'MOLAVE', date: 'Day 1', time: '06:00', lat: 13.5, lon: 119.5, windSpeed: 65, windGust: 80, movingSpeed: 13, movingDirection: 'WNW', ltWindSpeed: 15, ltWindGust: 20 },
+            { stormName: 'MOLAVE', date: 'Day 1', time: '18:00', lat: 14.1, lon: 116.2, windSpeed: 80, windGust: 100, movingSpeed: 14, movingDirection: 'WNW', ltWindSpeed: 22, ltWindGust: 28 },
+            { stormName: 'MOLAVE', date: 'Day 2', time: '06:00', lat: 14.6, lon: 113.2, windSpeed: 95, windGust: 118, movingSpeed: 14, movingDirection: 'WNW', ltWindSpeed: 30, ltWindGust: 38 },
+            { stormName: 'MOLAVE', date: 'Day 2', time: '18:00', lat: 14.9, lon: 110.4, windSpeed: 90, windGust: 112, movingSpeed: 13, movingDirection: 'WNW', ltWindSpeed: 32, ltWindGust: 40 },
+            { stormName: 'MOLAVE', date: 'Day 3', time: '08:00', lat: 15.1, lon: 108.9, windSpeed: 75, windGust: 95, movingSpeed: 12, movingDirection: 'WNW', ltWindSpeed: 24, ltWindGust: 30 }
+        ]
     }
 ];
 
