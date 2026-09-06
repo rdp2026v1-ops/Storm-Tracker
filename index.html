@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rong Doi Storm Tracker | Offshore Decision Support System</title>
+    <meta name="description"
+        content="Severe Storm & Weather Tracking System for Rong Doi Platform (RDP) and BK-TNHA Wellhead Platform. Real-time GIS geodesics, 1000/750/240 NM safety perimeters, and emergency SOP checklists.">
+    <link rel="icon" type="image/png" href="assets/images/RD Vertical - transparent.png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Leaflet.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- SheetJS (Excel .xlsx Export) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="brand-section">
+            <img src="assets/images/RD Vertical - transparent.png" alt="Rong Doi Platform" class="brand-icon"
+                onerror="this.src='assets/images/storm.png'">
+            <div>
+                <div class="brand-title">
+                    <span>RONG DOI STORM TRACKER</span>
+                    <span
+                        style="font-size: 0.75rem; background: rgba(0, 196, 255, 0.2); color: var(--gem-blue); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-highlight);">RDP
+                        & BK-TNHA OPS</span>
+                </div>
+                <div class="brand-subtitle">RDP (7.7925°N, 108.2021°E) • Block 11.2 • BK-TNHA (7.73°N, 107.93°E) • Block
+                    12.11</div>
+            </div>
+        </div>
+
+        <div class="header-status-group">
+            <div id="live-clock" class="live-clock">UTC 00:00:00 | LOCAL 00:00:00</div>
+            <button id="btn-sync-settings" class="sync-status-badge" title="Configure Cloud & Multi-User Collaboration">
+                <span class="pulse-dot"></span>
+                <span id="sync-label">Live Sync: Ready</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="app-container">
+
+        <!-- Left Sidebar: Control & Input Hub -->
+        <aside class="sidebar-panel">
+
+            <!-- Quick Preset & Incident Selector -->
+            <section class="sidebar-section">
+                <div class="section-title">
+                    <span>Incident & Presets</span>
+                    <span id="incident-count-badge" class="badge-count">0 Points</span>
+                </div>
+                <div class="form-group">
+                    <select id="preset-selector">
+                        <option value="">-- Select Scenario or Preset --</option>
+                        <option value="preset_0">Typhoon Tembin (Dec 2017 - Historic)</option>
+                        <option value="preset_1">Super Typhoon Yagi (Sept 2024)</option>
+                    </select>
+                    <button type="button" id="btn-generate-drill" class="btn btn-accent"
+                        style="width: 100%; margin-top: 8px;" title="Auto Generate Randomized Scenarios">🎲
+                        Auto-Generate Drill</button>
+                </div>
+            </section>
+
+            <!-- Storm Waypoint Entry Form -->
+            <section class="sidebar-section">
+                <div class="section-title">
+                    <span>Storm Waypoint Entry</span>
+                    <button id="btn-fetch-live-wx" class="btn btn-secondary"
+                        style="font-size: 0.7rem; padding: 3px 8px;"
+                        title="Fetch Live Rong Doi Weather - Wind Condition">📡 Live RDP
+                        Wx</button>
+                </div>
+
+                <form id="storm-form" autocomplete="off">
+                    <div class="form-grid">
+                        <div class="form-group span-2">
+                            <label for="storm-name">Storm / Typhoon Name</label>
+                            <input type="text" id="storm-name" placeholder="e.g. TEMBIN, YAGI" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="storm-date">Date (dd/mm)</label>
+                            <input type="text" id="storm-date" placeholder="DD/MM" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="storm-time">Time (hh:mm)</label>
+                            <input type="text" id="storm-time" placeholder="HH:MM" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="storm-lat">Latitude (°N)</label>
+                            <input type="number" id="storm-lat" step="0.01" placeholder="e.g. 8.50" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="storm-lon">Longitude (°E)</label>
+                            <input type="number" id="storm-lon" step="0.01" placeholder="e.g. 112.50" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="wind-speed">Storm Wind Speed</label>
+                            <div class="input-with-unit">
+                                <input type="number" id="wind-speed" step="1" placeholder="65" required>
+                                <span class="input-unit">kts</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="wind-gust">Storm Wind Gust</label>
+                            <div class="input-with-unit">
+                                <input type="number" id="wind-gust" step="1" placeholder="80" required>
+                                <span class="input-unit">kts</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="moving-speed">Moving Speed</label>
+                            <div class="input-with-unit">
+                                <input type="number" id="moving-speed" step="1" placeholder="12" required>
+                                <span class="input-unit">kts</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="moving-direction">Moving Direction</label>
+                            <select id="moving-direction" required>
+                                <option value="W">W (West)</option>
+                                <option value="WSW" selected>WSW (West-Southwest)</option>
+                                <option value="SW">SW (Southwest)</option>
+                                <option value="SSW">SSW (South-Southwest)</option>
+                                <option value="S">S (South)</option>
+                                <option value="SSE">SSE (South-Southeast)</option>
+                                <option value="SE">SE (Southeast)</option>
+                                <option value="ESE">ESE (East-Southeast)</option>
+                                <option value="E">E (East)</option>
+                                <option value="ENE">ENE (East-Northeast)</option>
+                                <option value="NE">NE (Northeast)</option>
+                                <option value="NNE">NNE (North-Northeast)</option>
+                                <option value="N">N (North)</option>
+                                <option value="NNW">NNW (North-Northwest)</option>
+                                <option value="NW">NW (Northwest)</option>
+                                <option value="WNW">WNW (West-Northwest)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lt-wind-speed">RDP Wind Speed</label>
+                            <div class="input-with-unit">
+                                <input type="number" id="lt-wind-speed" step="1" placeholder="25" required>
+                                <span class="input-unit">kts</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="lt-wind-gust">RDP Wind Gust</label>
+                            <div class="input-with-unit">
+                                <input type="number" id="lt-wind-gust" step="1" placeholder="32" required>
+                                <span class="input-unit">kts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary" style="flex: 2;"
+                            title="Calculate geodesic range, Tp arrival time, and plot storm waypoint on map">🌀 Track
+                            Storm Point</button>
+                        <button type="button" id="btn-animate" class="btn btn-accent" style="flex: 1;"
+                            title="Simulate continuous storm trajectory and dynamic movement across safety perimeters">▶
+                            Animate</button>
+                        <button type="button" id="btn-reset" class="btn btn-danger"
+                            title="Clear tracking data and reset dashboard to standby">Reset</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Safety Rings: 1000 NM, 750 NM, 240 NM -->
+            <section class="sidebar-section">
+                <div class="section-title">RDP Safety Perimeter Rings</div>
+                <div class="toggle-group">
+                    <label class="toggle-label" style="color: var(--accent-green);"
+                        title="Green Zone: 1000 NM to 750 NM">
+                        <input type="checkbox" id="toggle-1000" checked> 1000 NM (Green)
+                    </label>
+                    <label class="toggle-label" style="color: var(--accent-yellow);"
+                        title="Yellow Zone: 750 NM to 240 NM">
+                        <input type="checkbox" id="toggle-750" checked> 750 NM (Yellow)
+                    </label>
+                    <label class="toggle-label" style="color: var(--accent-red);" title="Red Zone: Within 240 NM">
+                        <input type="checkbox" id="toggle-240" checked> 240 NM (Red)
+                    </label>
+                </div>
+            </section>
+
+            <!-- Emergency Response Checklists -->
+            <section class="sidebar-section">
+                <div class="section-title">Emergency SOP Checklists</div>
+                <div class="zone-button-group">
+                    <button id="btn-open-green" class="btn btn-zone-green">
+                        <span>Green (1000-750)</span>
+                        <span id="badge-green" class="badge-count">0/11</span>
+                    </button>
+                    <button id="btn-open-yellow" class="btn btn-zone-yellow">
+                        <span>Yellow (750-240)</span>
+                        <span id="badge-yellow" class="badge-count">0/10</span>
+                    </button>
+                    <button id="btn-open-red" class="btn btn-zone-red">
+                        <span>Red (&lt;240)</span>
+                        <span id="badge-red" class="badge-count">0/10</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Media & References -->
+            <section class="sidebar-section">
+                <div class="section-title">Media & Reference Guides</div>
+                <div class="btn-grid-3">
+                    <button id="btn-open-videos" class="btn btn-secondary">🎥 Sea 3D Video</button>
+                    <button id="btn-open-scale" class="btn btn-secondary">📊 Beaufort Scale</button>
+                    <button id="btn-open-explanation" class="btn btn-secondary">📖 SOP Guide</button>
+                </div>
+            </section>
+
+        </aside>
+
+        <!-- Right Main View: GIS Map & Alert Banner -->
+        <section class="main-content">
+
+            <!-- Dynamic Operational Alert Banner -->
+            <div id="alert-banner" class="alert-banner-container">
+                <div class="alert-info-block">
+                    <div id="alert-icon" class="alert-icon-box">🛡️</div>
+                    <div>
+                        <div id="alert-headline" class="alert-text-headline">STANDBY / NO ACTIVE THREAT</div>
+                        <div id="alert-details" class="alert-text-detail">Awaiting storm coordinates to compute geodesic
+                            range to RDP & BK-TNHA, predicted arrival time (Tp), and evacuation criteria.</div>
+                    </div>
+                </div>
+
+                <div class="metric-pills">
+                    <div class="metric-pill">
+                        <span class="metric-pill-label">Distance to RDP</span>
+                        <span id="metric-distance" class="metric-pill-value">-- NM</span>
+                    </div>
+                    <div class="metric-pill">
+                        <span class="metric-pill-label">Predicted Tp</span>
+                        <span id="metric-tp" class="metric-pill-value">-- hrs</span>
+                    </div>
+                    <div class="metric-pill">
+                        <span class="metric-pill-label">Approach Vector</span>
+                        <span id="metric-approach" class="metric-pill-value">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaflet Marine GIS Map -->
+            <div class="map-wrapper">
+                <div id="map"></div>
+            </div>
+
+            <!-- Bottom Section: Waypoint History & Data Table -->
+            <div class="bottom-panel">
+                <div class="bottom-panel-header">
+                    <span style="font-weight: 700; font-size: 0.85rem; color: var(--brand-cyan);">RONG DOI FIELD STORM
+                        TRACKING LOG & AUDIT TRAIL</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btn-export-excel" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 4px 12px;"
+                            title="Export storm audit trail log and waypoint metrics to Microsoft Excel (.xlsx)">📊
+                            Export Excel (.xlsx)</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Storm Name</th>
+                                <th>Date/Time</th>
+                                <th>Position (°N, °E)</th>
+                                <th>Wind / Gust</th>
+                                <th>Movement</th>
+                                <th>Distance (RDP / BK)</th>
+                                <th>Predicted Tp</th>
+                                <th>RDP Winds</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <tr>
+                                <td colspan="10" style="text-align: center; color: var(--text-dim); padding: 24px;">No
+                                    storm waypoint data tracked yet. Enter coordinates above or load a preset.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Copyright Mark Footer -->
+                <div class="bottom-panel-footer">
+                    <span> 2026 - (w.)TungTT</span>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ====================================================================
+         MODALS & DRAWERS
+         ==================================================================== -->
+
+    <!-- Checklist Modal -->
+    <div id="modal-checklist" class="modal-backdrop">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div id="checklist-modal-title" class="modal-title">📋 EMERGENCY ACTION CHECKLIST</div>
+                <button class="btn-close-modal" data-close="modal-checklist">&times;</button>
+            </div>
+            <div id="checklist-modal-body" class="modal-body">
+                <!-- Injected via JS -->
+            </div>
+            <div class="modal-footer">
+                <button id="btn-reset-current-checklist" class="btn btn-danger">Reset Zone Checklist</button>
+                <button class="btn btn-secondary" data-close="modal-checklist">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Sea State Video Player Modal -->
+    <div id="modal-videos" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 960px;">
+            <div class="modal-header">
+                <div class="modal-title">🎥 3D Sea State & Wind Illustration Video</div>
+                <button class="btn-close-modal" data-close="modal-videos">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="video-tab-nav">
+                    <button class="video-tab-btn active" data-src="assets/videos/Lv1_7.mp4">Level 01 - 07
+                        (Moderate)</button>
+                    <button class="video-tab-btn" data-src="assets/videos/Lv8_11.mp4">Level 08 - 11 (Gale /
+                        Storm)</button>
+                    <button class="video-tab-btn" data-src="assets/videos/Lv12_higher.mp4">Level 12 & 12+
+                        (Typhoon)</button>
+                </div>
+                <div class="video-container">
+                    <video id="sea-state-video" controls loop playsinline>
+                        <source src="assets/videos/Lv1_7.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close="modal-videos">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Beaufort Wind Scale Modal -->
+    <div id="modal-scale" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 900px;">
+            <div class="modal-header">
+                <div class="modal-title">📊 Beaufort Wind & Wave Scale Reference</div>
+                <button class="btn-close-modal" data-close="modal-scale">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <img src="assets/images/Beaufort wind scale.png" alt="Beaufort Scale"
+                    style="max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-color);"
+                    onerror="this.alt='Beaufort scale reference image';">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close="modal-scale">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOP Explanation Modal -->
+    <div id="modal-explanation" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 900px;">
+            <div class="modal-header">
+                <div class="modal-title">📖 Severe Weather Operations Guide</div>
+                <button class="btn-close-modal" data-close="modal-explanation">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <img src="assets/images/Explanation.png" alt="SOP Explanation"
+                    style="max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-color);"
+                    onerror="this.alt='SOP Explanation Diagram';">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close="modal-explanation">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-Time Collaboration & Onshore Synchronization Hub Modal -->
+    <div id="modal-sync" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 600px;">
+            <div class="modal-header">
+                <div class="modal-title">☁️ Real-Time Collaboration Hub (CCR & Onshore Sync)</div>
+                <button class="btn-close-modal" data-close="modal-sync">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+                    Zero-configuration real-time synchronization connects the <strong>Offshore Command Team in the Central Control Room (CCR)</strong> with <strong>Onshore Emergency Response Teams (DIM / IMT)</strong>. All waypoint logs and emergency checklist milestones are shared live across terminals.
+                </p>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="sync-user-role">Operating Station / Terminal Role</label>
+                    <select id="sync-user-role" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-sm);">
+                        <option value="CCR_CRT">🕹️ Offshore Central Control Room (CCR / CRT) - Lead Input</option>
+                        <option value="OIM_FM">🎖️ Offshore Installation Manager (OIM / FM)</option>
+                        <option value="ONSHORE_IMT">🏢 Onshore Incident Management Team (DIM / IMT Vung Tau)</option>
+                        <option value="LOGISTICS_VNHS">🚁 Aviation & Marine Logistics (VNHS Standby)</option>
+                        <option value="RADIO_BRIDGE">📡 Radio Room & Standby Vessel Bridge (Observer)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="sync-room-name">Incident Collaboration Channel ID</label>
+                    <input type="text" id="sync-room-name" value="rong-doi-ops"
+                        placeholder="e.g. rong-doi-ops, typhoon-drill-2026">
+                </div>
+
+                <div
+                    style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--accent-green);">
+                    <strong>🟢 Active Zero-Config Sync:</strong> Local CCR multi-tab broadcast (<5ms) and secure cloud relay are active. Onshore and offshore workstations sharing this Channel ID sync automatically with <strong>no external setup or database URLs required</strong>.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-save-sync-config" class="btn btn-primary">Update Channel & Role</button>
+                <button class="btn btn-secondary" data-close="modal-sync">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet.js -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- SheetJS for High-Fidelity Excel (.xlsx) Reporting -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Main ES6 Application Controller -->
+    <script type="module" src="js/app.js"></script>
+
+</body>
+
+</html>
