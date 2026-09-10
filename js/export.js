@@ -11,9 +11,15 @@ async function ensureXLSXLoaded() {
     try {
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            script.src = 'vendor/xlsx/xlsx.full.min.js';
             script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load SheetJS from CDN'));
+            script.onerror = () => {
+                const cdnScript = document.createElement('script');
+                cdnScript.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                cdnScript.onload = () => resolve();
+                cdnScript.onerror = () => reject(new Error('Failed to load SheetJS'));
+                document.head.appendChild(cdnScript);
+            };
             document.head.appendChild(script);
         });
         return !!window.XLSX;

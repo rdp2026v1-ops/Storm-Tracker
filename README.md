@@ -30,9 +30,17 @@ A modern, real-time, interactive GIS web application for tracking tropical depre
 
 ---
 
-## 📦 How to Run Locally
+## 📦 How to Run Offline (No Internet Required)
 
+All required dependencies (Leaflet.js GIS, SheetJS Excel export, MQTT synchronization) are bundled locally in the `vendor/` directory so the app works **100% offline** without any internet connection.
+
+### Option 1: 1-Click Launcher (Windows)
+Double-click **`run_offline.bat`** in this folder. It will start a local server and automatically launch your default browser at `http://localhost:8000`.
+
+### Option 2: Command Line (PowerShell / Command Prompt / Terminal)
 ```bash
 python -m http.server 8000
 ```
-Open **`http://localhost:8000`** in any web browser.
+Then open **`http://localhost:8000`** in Chrome, Edge, or Firefox.
+
+> **Why a local server is required:** Modern browsers enforce CORS security policies that prevent ES6 JavaScript modules (`import`/`export`) from running directly via `file:///` URLs. Running `python -m http.server` serves the files locally over HTTP loopback (`127.0.0.1`) without needing an internet connection or network access.

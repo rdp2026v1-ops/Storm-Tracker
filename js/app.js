@@ -747,7 +747,7 @@ class AppController {
                     const row = e.target.closest('.checklist-item-row');
                     const idx = parseInt(row.getAttribute('data-idx'));
                     const parsed = parseChecklistItem(def.items[idx]);
-                    const newState = this.checklists.toggleItem(zone, idx, parsed.role);
+                    const newState = this.checklists.toggleItem(zone, idx, station.shortName || parsed.role);
                     this.renderChecklistModal(zone);
                     this.updateChecklistBadges();
 
@@ -762,7 +762,7 @@ class AppController {
         if (this.activeLogFilter === 'ALL') {
             return this.actionLogs;
         }
-        if (['CCR_CRT', 'OIM_IM', 'ONSHORE_IMT', 'LOGISTICS_VTSB', 'RADIO_TELECOMS', 'OTHERS'].includes(this.activeLogFilter)) {
+        if (['CCR_CRT', 'OIM_IM', 'ONSHORE_IMT', 'LOGISTICS_VTSB', 'RADIO_TELECOMS', 'ERT_MEDIC', 'OTHERS'].includes(this.activeLogFilter)) {
             return this.actionLogs.filter(l => l.stationRole === this.activeLogFilter);
         }
         return this.actionLogs.filter(l => l.category === this.activeLogFilter);

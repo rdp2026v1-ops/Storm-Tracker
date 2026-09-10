@@ -56,6 +56,15 @@ export const OPERATING_STATIONS = {
         canInputStormData: false,
         canTickChecklist: true
     },
+    'ERT_MEDIC': {
+        id: 'ERT_MEDIC',
+        name: 'Emergency Response Team / Medic (ERT)',
+        shortName: 'ERT / Medic',
+        icon: '🩺',
+        badgeColor: '#34d399', // Medical Emerald
+        canInputStormData: false,
+        canTickChecklist: true
+    },
     'OTHERS': {
         id: 'OTHERS',
         name: 'Others',
@@ -122,7 +131,7 @@ export class SyncEngine {
 
     initBroadcastChannel() {
         if (this.broadcastChannel) {
-            try { this.broadcastChannel.close(); } catch (e) {}
+            try { this.broadcastChannel.close(); } catch (e) { }
         }
         if ('BroadcastChannel' in window) {
             try {
@@ -159,7 +168,7 @@ export class SyncEngine {
         if (!this.isOnline) return;
 
         if (this.mqttClient) {
-            try { this.mqttClient.end(true); } catch (e) {}
+            try { this.mqttClient.end(true); } catch (e) { }
             this.mqttClient = null;
         }
 
@@ -231,7 +240,7 @@ export class SyncEngine {
      */
     connectNtfyRelay() {
         if (this.ntfyEventSource) {
-            try { this.ntfyEventSource.close(); } catch (e) {}
+            try { this.ntfyEventSource.close(); } catch (e) { }
             this.ntfyEventSource = null;
         }
 
@@ -250,7 +259,7 @@ export class SyncEngine {
                             this.onDataReceived(parsed, 'ntfy');
                         }
                     }
-                } catch (e) {}
+                } catch (e) { }
             };
         } catch (e) {
             console.warn('ntfy SSE init error:', e);
@@ -278,7 +287,7 @@ export class SyncEngine {
         if (this.broadcastChannel) {
             try {
                 this.broadcastChannel.postMessage(message);
-            } catch (e) {}
+            } catch (e) { }
         }
 
         const jsonStr = JSON.stringify(message);
@@ -296,8 +305,8 @@ export class SyncEngine {
                 method: 'POST',
                 body: jsonStr,
                 headers: { 'Title': `RDP Sync: ${action}`, 'Priority': 'low' }
-            }).catch(() => {});
-        } catch (e) {}
+            }).catch(() => { });
+        } catch (e) { }
     }
 
     getOrCreateClientId() {

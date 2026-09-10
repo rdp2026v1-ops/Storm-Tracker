@@ -16,12 +16,8 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700&display=swap"
         rel="stylesheet">
 
-    <!-- Leaflet.js CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-
-    <!-- SheetJS (Excel .xlsx Export) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Leaflet.js CSS (Offline Local Vendor) -->
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/style.css">
@@ -432,6 +428,7 @@
                         <option value="ONSHORE_IMT">🏢 Onshore Incident Management Team (IMT) [Checklists Only]</option>
                         <option value="LOGISTICS_VTSB">🚁 Aviation & Marine Logistics (VTSB) [Checklists Only]</option>
                         <option value="RADIO_TELECOMS">📡 Radio Room (Telecoms) [Checklists Only]</option>
+                        <option value="ERT_MEDIC">🩺 Emergency Response Team / Medic (ERT) [Checklists Only]</option>
                         <option value="OTHERS">👁️ Others [Read Only]</option>
                     </select>
                 </div>
@@ -475,6 +472,7 @@
                             <option value="ONSHORE_IMT">Onshore IMT</option>
                             <option value="LOGISTICS_VTSB">VTSB Logistics</option>
                             <option value="RADIO_TELECOMS">Radio Room</option>
+                            <option value="ERT_MEDIC">ERT / Medic</option>
                             <option value="CHECKLIST">Checklist Milestones</option>
                             <option value="WAYPOINT">Storm Waypoints</option>
                         </select>
@@ -507,15 +505,14 @@
         </div>
     </div>
 
-    <!-- Leaflet.js -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet.js (Offline Local Vendor) -->
+    <script src="vendor/leaflet/leaflet.js"></script>
 
-    <!-- SheetJS for High-Fidelity Excel (.xlsx) Reporting -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS for High-Fidelity Excel (.xlsx) Reporting (Offline Local Vendor) -->
+    <script src="vendor/xlsx/xlsx.full.min.js"></script>
 
-    <!-- MQTT.js for Robust Real-Time Cloud Collaboration -->
-    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.5/dist/mqtt.min.js"></script>
+    <!-- MQTT.js for Real-Time Collaboration (Offline Local Vendor) -->
+    <script src="vendor/mqtt/mqtt.min.js"></script>
 
     <!-- Main ES6 Application Controller -->
     <script type="module" src="js/app.js"></script>
