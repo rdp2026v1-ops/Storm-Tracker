@@ -60,7 +60,7 @@ export const OPERATING_STATIONS = {
         id: 'ERT_MEDIC',
         name: 'Emergency Response Team / Medic (ERT)',
         shortName: 'ERT / Medic',
-        icon: '<img src="assets/icons/ert-helmet.svg" alt="ERT" class="station-badge-icon">',
+        icon: '⛑️',
         badgeColor: '#34d399', // Medical Emerald
         canInputStormData: false,
         canTickChecklist: true

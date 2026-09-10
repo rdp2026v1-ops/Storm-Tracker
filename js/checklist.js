@@ -115,7 +115,7 @@ export const ROLE_STYLES = {
         color: '#34d399', // Medical Emerald
         bg: 'rgba(52, 211, 153, 0.12)',
         border: 'rgba(52, 211, 153, 0.4)',
-        icon: '<img src="assets/icons/ert-helmet.svg" alt="ERT" class="station-badge-icon">'
+        icon: '⛑️'
     },
     'DIM Onshore': {
         name: 'DIM Onshore',
